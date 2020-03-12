@@ -108,39 +108,41 @@ def run_with_seed(seed):
     places = dict()
 
     dev_positions = dict()
-    random.shuffle(devs)
-    for space, dev in zip(dev_spaces, devs):
+    devs_copy = devs.copy()
+    random.shuffle(devs_copy)
+    for space, dev in zip(dev_spaces, devs_copy):
         dev_positions[dev.index] = space
         places[space] = dev
 
     pm_positions = dict()
-    random.shuffle(pms)
-    for space, pm in zip(pm_spaces, pms):
+    pms_copy = pms.copy()
+    random.shuffle(pms_copy)
+    for space, pm in zip(pm_spaces, pms_copy):
         pm_positions[pm.index] = space
         places[space] = pm
 
     return places, dev_positions, pm_positions
 
 
-max_score = 0
-max_seed = 0
-
-for seed in tqdm(range(50000)):
-    places, _, _ = run_with_seed(seed)
-
-    def score_pair(a, b):
-        if isinstance(a, ProjectManager):
+def score_pair(a, b):
+    if isinstance(a, ProjectManager):
+        return a.bonus * b.bonus if a.company == b.company else 0
+    else:
+        if isinstance(b, ProjectManager):
             return a.bonus * b.bonus if a.company == b.company else 0
         else:
-            if isinstance(b, ProjectManager):
-                return a.bonus * b.bonus if a.company == b.company else 0
-            else:
-                return a.score(b)
+            return a.score(b)
 
-    def score_position(row, col):
-        position = (row, col)
-        if position not in places:
-            return 0
+
+max_score = 0
+max_seed = 0
+for seed in tqdm(range(100000)):
+    places, _, _ = run_with_seed(seed)
+
+    total_score = 0
+    for row, col in places.keys():
+        if (row, col) not in places:
+            continue
 
         employee = places[(row, col)]
 
@@ -148,16 +150,14 @@ for seed in tqdm(range(50000)):
         if (row, col + 1) in places:
             other = places[(row, col + 1)]
             score += score_pair(employee, other)
+            #print(employee, other, score)
 
         if (row + 1, col) in places:
             other = places[(row + 1, col)]
             score += score_pair(employee, other)
+            #print(employee, other, score)
 
-        return score
-
-    total_score = 0
-    for row, col in places.keys():
-        total_score += score_position(row, col)
+        total_score += score
 
     if total_score > max_score:
         max_score = total_score
