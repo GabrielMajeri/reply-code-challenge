@@ -92,8 +92,29 @@ with open(args.input_file) as fin:
 
         pms_by_company[company].append(pm)
 
+dev_count = 0
+dev_positions = []
+for developer in devs:
+    dev_positions.append(dev_spaces[dev_count])
+    dev_count += 1
+    if dev_count == len(dev_spaces):
+        break
+
+pm_count = 0
+pm_positions = []
+for pm in pms:
+    pm_positions.append(pm_spaces[pm_count])
+    pm_count += 1
+    if pm_count == len(pm_spaces):
+        break
+
 with open(args.output_file, 'w') as fout:
-    for _ in range(num_devs):
+    for idx in range(dev_count):
+        print(dev_positions[idx][1], dev_positions[idx][0], file=fout)
+    for _ in range(dev_count, len(devs)):
         print('X', file=fout)
-    for _ in range(num_pms):
+
+    for idx in range(pm_count):
+        print(pm_positions[idx][1], pm_positions[idx][0], file=fout)
+    for _ in range(pm_count, len(pms)):
         print('X', file=fout)
