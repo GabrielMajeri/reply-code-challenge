@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 python3 solution.py a_solar.txt a.out
 python3 solution.py b_dream.txt b.out
 python3 solution.py c_soup.txt c.out
