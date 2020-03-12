@@ -1,5 +1,5 @@
 import argparse
-
+import math
 
 parser = argparse.ArgumentParser()
 parser.add_argument("input_file")
@@ -8,17 +8,25 @@ args = parser.parse_args()
 
 
 class Developer:
-    def __init__(self, company, bonus, skills):
+    def __init__(self, index, company, bonus, skills):
+        self.index = index
         self.company = company
         self.bonus = bonus
         self.skills = skills
+        self.chosen = 0
 
     def __repr__(self):
         return f'Developer({self.company}, {self.bonus}, {self.skills})'
 
+    def score(self, other):
+        same = len(self.skills.intersection(other.skills))
+        whole = len(self.skills.union(other.skills))
+        return same * (whole - same)
+
 
 class ProjectManager:
-    def __init__(self, company, bonus):
+    def __init__(self, index, company, bonus):
+        self.index = index
         self.company = company
         self.bonus = bonus
 
@@ -61,7 +69,7 @@ with open(args.input_file) as fin:
             skill_map[skill] = len(skill_map)
         return skill_map[skill]
 
-    for _ in range(num_devs):
+    for i in range(num_devs):
         info = next(fin).split()
 
         company = info[0]
@@ -69,7 +77,7 @@ with open(args.input_file) as fin:
         # num_skills = info[2]
         skills = set(map(encode_skill, info[3:]))
 
-        developer = Developer(company, bonus, skills)
+        developer = Developer(i, company, bonus, skills)
         devs.append(developer)
 
     num_pms = int(next(fin))
@@ -77,16 +85,86 @@ with open(args.input_file) as fin:
 
     pms = []
 
-    for _ in range(num_pms):
+    for i in range(num_pms):
         company, bonus = next(fin).split()
 
         bonus = int(bonus)
 
-        pm = ProjectManager(company, bonus)
+        pm = ProjectManager(i, company, bonus)
         pms.append(pm)
 
+
+def matching_coef(dev1, dev2):
+    sk1 = dev1.skills
+    sk2 = dev2.skills
+    intersect = len(sk1.intersection(sk2))
+    different = len(sk1)+len(sk2) - intersect
+    return abs(intersect - different)
+
+
+def get_new_developer(devs):
+    for dev in devs:
+        if dev.chosen == 0:
+            dev.chosen = 1
+            return dev
+
+
+def get_matching_developer(referenceDev, devs):
+    mini = matching_coef(referenceDev, referenceDev)
+    minidev = referenceDev.index
+    for dev in devs:
+        if dev.chosen == 1:
+            continue
+        coef = matching_coef(referenceDev, dev)
+        if coef < mini:
+            mini = coef
+        minidev = dev
+
+    minidev.chosen = 1
+    return minidev
+
+# print('new devs test' + str(get_new_developer(devs)))
+
+
+matching_coef(devs[1], devs[2])
+devPlaces = ['X'] * len(devs)
+
+for i in range(len(office)):
+    for j in range(len(office[i])):
+        # if we have a developer space
+        if office[i][j] == '_':
+            # if we don't have any neighbours
+            if ((office[i-1][j] == 'M' or office[i-1][j] == '_' or office[i-1][j] == '#')
+                and (office[i][j-1] == 'M' or office[i][j-1] == '_' or office[i][j-1] == '#')
+                and (office[i][j+1] == 'M' or office[i][j+1] == '_' or office[i][j+1] == '#')
+                    and (office[i+1][j] == 'M' or office[i+1][j-1] == '_' or office[i+1][j-1] == '#')):
+                new_dev = get_new_developer(devs)
+                office[i][j] = new_dev
+            elif (office[i-1][j] != 'M' and office[i-1][j] != '_' and office[i-1][j] != '#'):
+                # we have neighbour on office[i-1][j]
+                office[i][j] == str(get_matching_developer(
+                    office[i-1][j], devs).index)
+            elif (office[i+1][j] != 'M' and office[i+1][j] != '_' and office[i+1][j] != '#'):
+                # we have neighbour on office[i+1][j]
+                office[i][j] == str(get_matching_developer(
+                    office[i+1][j], devs).index)
+            elif (office[i][j-1] != 'M' and office[i][j-1] != '_' and office[i][j-1] != '#'):
+                # we have neighbour on office[i][j-1]
+                office[i][j] == str(get_matching_developer(
+                    office[i][j-1], devs).index)
+            elif (office[i][j+1] != 'M' and office[i][j+1] != '_' and office[i][j+1] != '#'):
+                # we have neighbour on office[i][j+1]
+                office[i][j] == str(get_matching_developer(
+                    office[i][j+1], devs).index)
+
+
 with open(args.output_file, 'w') as fout:
-    for _ in range(num_devs):
-        print('X', file=fout)
-    for _ in range(num_pms):
+    for i in range(num_devs):
+        try:
+            print(str(devPlaces[i][1])+' ' +
+                  str(devPlaces[i][0]), file=fout)
+        except:
+            print('X', file=fout)
+
+    for i in range(num_pms):
         print('X', file=fout)
