@@ -184,6 +184,7 @@ with Pool(processes=cpu_count()) as pool:
             max_seed = seed
             tqdm.write(f'Max score: {max_score} for seed {max_seed}')
 
+print(f'Max score: {max_score} for seed {max_seed}')
 _, dev_positions, pm_positions = run_with_seed(max_seed)
 
 with open(args.output_file, 'w') as fout:
