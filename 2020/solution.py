@@ -1,12 +1,17 @@
 import argparse
 from collections import defaultdict
+from multiprocessing import Pool, cpu_count
 import random
 from tqdm import tqdm
+import signal
+import sys
 
 
 parser = argparse.ArgumentParser()
 parser.add_argument("input_file")
 parser.add_argument("output_file")
+parser.add_argument("interval_start", type=int)
+parser.add_argument("interval_end", type=int)
 args = parser.parse_args()
 
 
@@ -134,36 +139,50 @@ def score_pair(a, b):
             return a.score(b)
 
 
-max_score = 0
-max_seed = 0
-for seed in tqdm(range(100000)):
-    places, _, _ = run_with_seed(seed)
+reached_seed = 0
 
-    total_score = 0
-    for row, col in places.keys():
-        if (row, col) not in places:
-            continue
 
-        employee = places[(row, col)]
+def signal_handler(sig, frame):
+    print()
+    print('Current seed:', reached_seed)
+    sys.exit(0)
 
-        score = 0
-        if (row, col + 1) in places:
-            other = places[(row, col + 1)]
-            score += score_pair(employee, other)
-            #print(employee, other, score)
 
-        if (row + 1, col) in places:
-            other = places[(row + 1, col)]
-            score += score_pair(employee, other)
-            #print(employee, other, score)
+signal.signal(signal.SIGINT, signal_handler)
 
-        total_score += score
 
-    if total_score > max_score:
-        max_score = total_score
-        max_seed = seed
+with Pool(processes=cpu_count()) as pool:
+    max_score = 0
+    max_seed = 0
+    for seed in tqdm(range(args.interval_start, args.interval_end)):
+        reached_seed = seed
 
-print('Max score:', max_score, 'for seed', max_seed)
+        places, _, _ = run_with_seed(seed)
+
+        total_score = 0
+        for row, col in places.keys():
+            if (row, col) not in places:
+                continue
+
+            employee = places[(row, col)]
+
+            score = 0
+            if (row, col + 1) in places:
+                other = places[(row, col + 1)]
+                score += score_pair(employee, other)
+                #print(employee, other, score)
+
+            if (row + 1, col) in places:
+                other = places[(row + 1, col)]
+                score += score_pair(employee, other)
+                #print(employee, other, score)
+
+            total_score += score
+
+        if total_score > max_score:
+            max_score = total_score
+            max_seed = seed
+            tqdm.write(f'Max score: {max_score} for seed {max_seed}')
 
 _, dev_positions, pm_positions = run_with_seed(max_seed)
 
