@@ -1,4 +1,5 @@
 import argparse
+from collections import defaultdict
 
 
 parser = argparse.ArgumentParser()
@@ -53,6 +54,7 @@ with open(args.input_file) as fin:
     print(f'Developers: {num_devs}')
 
     devs = []
+    devs_by_company = defaultdict(list)
 
     skill_map = dict()
 
@@ -72,10 +74,13 @@ with open(args.input_file) as fin:
         developer = Developer(company, bonus, skills)
         devs.append(developer)
 
+        devs_by_company[company].append(developer)
+
     num_pms = int(next(fin))
     print(f'PMs: {num_pms}')
 
     pms = []
+    pms_by_company = defaultdict(list)
 
     for _ in range(num_pms):
         company, bonus = next(fin).split()
@@ -84,6 +89,8 @@ with open(args.input_file) as fin:
 
         pm = ProjectManager(company, bonus)
         pms.append(pm)
+
+        pms_by_company[company].append(pm)
 
 with open(args.output_file, 'w') as fout:
     for _ in range(num_devs):
