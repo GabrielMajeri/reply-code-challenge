@@ -1,5 +1,7 @@
 import argparse
 from collections import defaultdict
+import random
+from tqdm import tqdm
 
 
 parser = argparse.ArgumentParser()
@@ -9,7 +11,8 @@ args = parser.parse_args()
 
 
 class Developer:
-    def __init__(self, company, bonus, skills):
+    def __init__(self, index, company, bonus, skills):
+        self.index = index
         self.company = company
         self.bonus = bonus
         self.skills = skills
@@ -17,9 +20,15 @@ class Developer:
     def __repr__(self):
         return f'Developer({self.company}, {self.bonus}, {self.skills})'
 
+    def score(self, other):
+        same = len(self.skills.intersection(other.skills))
+        whole = len(self.skills.union(other.skills))
+        return same * (whole - same)
+
 
 class ProjectManager:
-    def __init__(self, company, bonus):
+    def __init__(self, index, company, bonus):
+        self.index = index
         self.company = company
         self.bonus = bonus
 
@@ -63,15 +72,15 @@ with open(args.input_file) as fin:
             skill_map[skill] = len(skill_map)
         return skill_map[skill]
 
-    for _ in range(num_devs):
+    for index in range(num_devs):
         info = next(fin).split()
 
         company = info[0]
-        bonus = info[1]
+        bonus = int(info[1])
         # num_skills = info[2]
         skills = set(map(encode_skill, info[3:]))
 
-        developer = Developer(company, bonus, skills)
+        developer = Developer(index, company, bonus, skills)
         devs.append(developer)
 
         devs_by_company[company].append(developer)
@@ -82,39 +91,93 @@ with open(args.input_file) as fin:
     pms = []
     pms_by_company = defaultdict(list)
 
-    for _ in range(num_pms):
+    for index in range(num_pms):
         company, bonus = next(fin).split()
 
         bonus = int(bonus)
 
-        pm = ProjectManager(company, bonus)
+        pm = ProjectManager(index, company, bonus)
         pms.append(pm)
 
         pms_by_company[company].append(pm)
 
-dev_count = 0
-dev_positions = []
-for developer in devs:
-    dev_positions.append(dev_spaces[dev_count])
-    dev_count += 1
-    if dev_count == len(dev_spaces):
-        break
 
-pm_count = 0
-pm_positions = []
-for pm in pms:
-    pm_positions.append(pm_spaces[pm_count])
-    pm_count += 1
-    if pm_count == len(pm_spaces):
-        break
+def run_with_seed(seed):
+    random.seed(seed)
+
+    places = dict()
+
+    dev_positions = dict()
+    random.shuffle(devs)
+    for space, dev in zip(dev_spaces, devs):
+        dev_positions[dev.index] = space
+        places[space] = dev
+
+    pm_positions = dict()
+    random.shuffle(pms)
+    for space, pm in zip(pm_spaces, pms):
+        pm_positions[pm.index] = space
+        places[space] = pm
+
+    return places, dev_positions, pm_positions
+
+
+max_score = 0
+max_seed = 0
+
+for seed in tqdm(range(50000)):
+    places, _, _ = run_with_seed(seed)
+
+    def score_pair(a, b):
+        if isinstance(a, ProjectManager):
+            return a.bonus * b.bonus if a.company == b.company else 0
+        else:
+            if isinstance(b, ProjectManager):
+                return a.bonus * b.bonus if a.company == b.company else 0
+            else:
+                return a.score(b)
+
+    def score_position(row, col):
+        position = (row, col)
+        if position not in places:
+            return 0
+
+        employee = places[(row, col)]
+
+        score = 0
+        if (row, col + 1) in places:
+            other = places[(row, col + 1)]
+            score += score_pair(employee, other)
+
+        if (row + 1, col) in places:
+            other = places[(row + 1, col)]
+            score += score_pair(employee, other)
+
+        return score
+
+    total_score = 0
+    for row, col in places.keys():
+        total_score += score_position(row, col)
+
+    if total_score > max_score:
+        max_score = total_score
+        max_seed = seed
+
+print('Max score:', max_score, 'for seed', max_seed)
+
+_, dev_positions, pm_positions = run_with_seed(max_seed)
 
 with open(args.output_file, 'w') as fout:
-    for idx in range(dev_count):
-        print(dev_positions[idx][1], dev_positions[idx][0], file=fout)
-    for _ in range(dev_count, len(devs)):
-        print('X', file=fout)
+    for idx in range(len(devs)):
+        if idx in dev_positions:
+            position = dev_positions[idx]
+            print(position[1], position[0], file=fout)
+        else:
+            print('X', file=fout)
 
-    for idx in range(pm_count):
-        print(pm_positions[idx][1], pm_positions[idx][0], file=fout)
-    for _ in range(pm_count, len(pms)):
-        print('X', file=fout)
+    for idx in range(len(pms)):
+        if idx in pm_positions:
+            position = pm_positions[idx]
+            print(position[1], position[0], file=fout)
+        else:
+            print('X', file=fout)
